@@ -27,9 +27,23 @@
     _locationManager = [[CLLocationManager alloc]  init];
     [self setLocationManager:_locationManager];
     
-    NSLog(@"locationManager: %hhd", [[self locationManager] locationServicesEnabled]);
-
+    _geocoder = [[CLGeocoder alloc] init];
+    [self setGeocoder:_geocoder];
+    
+    self.locationManager.delegate = self;
 }
+
+-(void)touchesBegan:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event
+{
+    [self.view endEditing:YES];
+}
+
+- (BOOL)textFieldShouldReturn:(UITextField *)textField
+{
+    [textField resignFirstResponder];
+    return YES;
+}
+
 
 - (void)didReceiveMemoryWarning {
     [super didReceiveMemoryWarning];
@@ -38,7 +52,6 @@
 
 - (IBAction)getGeolocation:(id)sender {
 
-    self.locationManager.delegate = self;
     [self locationManager].distanceFilter = kCLDistanceFilterNone;
     [self locationManager].desiredAccuracy = kCLLocationAccuracyBest;
     [[self locationManager] startUpdatingLocation];
@@ -47,6 +60,24 @@
 }
 
 - (IBAction)searchLocation:(id)sender {
+     
+     [[self geocoder] geocodeAddressString:[[self search] text] completionHandler:^(NSArray *placemarks, NSError *error) {
+        NSLog(@"Found placemarks: %@, error: %@", placemarks, error);
+        [self setPlacemark:_placemark];
+        if (error == nil && [placemarks count] > 0) {
+            [self setPlacemark:[placemarks lastObject]];
+            NSLog(@"%@", [self placemark]);
+            [[self latitude] setText:[NSString stringWithFormat:@"%lf", [self placemark].location.coordinate.latitude]];
+            [[self longitude] setText:[NSString stringWithFormat:@"%lf", [self placemark].location.coordinate.longitude]];
+            [[self city] setText:[[self placemark] locality]];
+            [[self country] setText:[[self placemark] country]];
+            [[self state] setText:[[self placemark] administrativeArea]];
+            [[self address] setText:[NSString stringWithFormat:@" %@ %@ %@", [[self placemark] subThoroughfare], [[self placemark] thoroughfare], [[self placemark] postalCode]]];
+        } else {
+            NSLog(@"%@", error.debugDescription);
+        }
+    } ];
+
 }
 
 #pragma mark - CLLocationManagerDelegate
@@ -56,16 +87,6 @@
     NSLog(@"didFailWithError: %@", error);
 }
 
-- (void)locationManager:(CLLocationManager *)manager didUpdateToLocation:(CLLocation *)newLocation fromLocation:(CLLocation *)oldLocation
-{
-    NSLog(@"didUpdateToLocation: %@", newLocation);
-    CLLocation *currentLocation = newLocation;
-    
-    if (currentLocation != nil) {
-        [self longitude].text = [NSString stringWithFormat:@"%.8f", currentLocation.coordinate.longitude];
-        [self latitude].text = [NSString stringWithFormat:@"%.8f", currentLocation.coordinate.latitude];
-    }
-}
 
 - (void)locationManager:(CLLocationManager *)manager didUpdateLocations:(NSArray *)locations {
     // If it's a relatively recent event, turn off updates to save power.
@@ -77,7 +98,40 @@
         NSLog(@"latitude %+.6f, longitude %+.6f\n",
               location.coordinate.latitude,
               location.coordinate.longitude);
+        
+        [[self latitude] setText:[NSString stringWithFormat:@"%lf", location.coordinate.latitude]];
+        [[self longitude] setText:[NSString stringWithFormat:@"%lf", location.coordinate.longitude]];
+        
+        [[self locationManager] stopUpdatingLocation];
+        
+        NSLog(@"Resolving the Address");
+        [[self geocoder] reverseGeocodeLocation:location completionHandler:^(NSArray *placemarks, NSError *error) {
+            NSLog(@"Found placemarks: %@, error: %@", placemarks, error);
+            [self setPlacemark:_placemark];
+            if (error == nil && [placemarks count] > 0) {
+                [self setPlacemark:[placemarks lastObject]];
+                NSLog(@"%@", [self placemark]);
+                [[self city] setText:[[self placemark] locality]];
+                [[self country] setText:[[self placemark] country]];
+                [[self state] setText:[[self placemark] administrativeArea]];
+                [[self address] setText:[NSString stringWithFormat:@" %@ %@ %@", [[self placemark] subThoroughfare], [[self placemark] thoroughfare], [[self placemark] postalCode]]];
+                /*addressLabel.text = [NSString stringWithFormat:@"%@ %@\n%@ %@\n%@\n%@",
+                                     placemark.subThoroughfare, placemark.thoroughfare,
+                                     placemark.postalCode, placemark.locality,
+                                     placemark.administrativeArea,
+                                     placemark.country];*/
+            } else {
+                NSLog(@"%@", error.debugDescription);
+            }
+        } ];
+
     }
 }
+
+/*- (void)geocodeAddressString:(NSString *)addressString
+           completionHandler:(CLGeocodeCompletionHandler)completionHandler
+{
+    
+}*/
 
 @end

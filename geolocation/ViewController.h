@@ -12,9 +12,13 @@
 @interface ViewController : UIViewController <CLLocationManagerDelegate>
 {
     CLLocationManager *_locationManager;
+    CLGeocoder *_geocoder;
+    CLPlacemark *_placemark;
 }
 
 @property(nonatomic,retain) CLLocationManager *locationManager;
+@property(nonatomic,retain) CLGeocoder *geocoder;
+@property(nonatomic,retain) CLPlacemark *placemark;
 
 @end
 
